@@ -1,0 +1,11 @@
+{
+  "name": "bytecone",
+  "version": "1.0.0",
+  "description": "Block Cain basic",
+  "main": "index.js",
+  "author": "Anik Anwar",
+  "license": "MIT",
+  "dependencies": {
+    "crypto-js": "^3.1.9-1"
+  }
+}
