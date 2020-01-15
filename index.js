@@ -1,5 +1,6 @@
 var sha256 = require("crypto-js/sha256");
-
+var EC = require('elliptic').ec;
+var ec = new EC('secp256k1');
 //console.log(sha256("Anik").toString());
 
 class Block {
@@ -26,6 +27,16 @@ class Block {
             this.timestamp + JSON.stringify(this.transaction) + this.previusHash + this.tmp
         ).toString()
     }
+
+    //this check all transection are valid??
+    hasValidTransection(){
+        for(let t of this.transaction)
+            if(!t.isValid())
+                return false
+        return true
+    }
+
+    
 }
 
 class Transaction {
@@ -33,6 +44,32 @@ class Transaction {
         this.fromAddress = fromAddress
         this.toAddress = toAddress
         this.amount = amount
+    }
+
+    createHash() {
+        return sha256(this.fromAddress + this.toAddress + this.amount).toString()
+    }
+
+    signTransaction(key){
+        if(key.getPublic('hex') !== this.fromAddress){
+            throw new Error("you are not authorized")
+        }
+            
+        
+        const transectionHash = this.createHash()
+        const signature = key.sign(transectionHash, 'base64')
+        this.signature = signature.toDER()
+    }
+
+    isValid(){
+        if(this.fromAddress == null) return true
+        if(!this.signature || this.signature.length ===0 )
+            throw new Error("No signiture")
+            
+        var key = ec.keyFromPublic(this.fromAddress, 'hex');
+        
+        return key.verify(this.createHash(), this.signature)
+
     }
 }
 
@@ -55,7 +92,20 @@ class BlockChain {
         return this.chain[this.chain.length - 1]
     }
 
-    createTransactions(transaction) {
+    addTransactions(transaction) {
+        if(!transaction.fromAddress || !transaction.toAddress)
+            throw new Error("Missing Address!! Can not process transection")
+
+        if(!transaction.isValid())
+            throw new Error("Invalid Transection")
+        
+    
+        if(transaction.amount < 0)
+            throw new Error("Invalid Transection Amount")
+        
+        // if(transaction.amount > this.getBalanceByAddress(transaction.fromAddress))
+        //     throw new Error("Insufucent balance")
+        
         this.pendingTransactions.push(transaction)
     }
 
@@ -82,7 +132,9 @@ class BlockChain {
                 }
             }
         }
-        return balance;
+        return balance
+        // let res = { message : 'Your Banlance is '+balance}
+        // return res;
     }
 
     // addBlock(newBlock) {
@@ -99,26 +151,38 @@ class BlockChain {
             if(currentBlock.previusHash !== previousBlock.hash) return false
 
             if(currentBlock.hash !== currentBlock.calculateHash()) return false
+
+            if(!currentBlock.hasValidTransection()) return false
         }
 
         return true
     }
+
+
+
+
 }
 
-const byteCoin = new BlockChain()
+module.exports = {
+    Block, BlockChain, Transaction
+}
 
-byteCoin.createTransactions(new Transaction("Feni","Dhaka", 100))
-byteCoin.createTransactions(new Transaction("Dhaka","Feni", 50))
-// byteCoin.createTransactions(new Transaction("Dhaka","CTG", 50))
+// const byteCoin = new BlockChain()
 
-byteCoin.minePendingTransactions("Anik-Address")
-console.log(byteCoin.getBalanceByAddress("Anik-Address"))
+
+
+// byteCoin.addTransactions(new Transaction("Feni","Dhaka", 100))
+// byteCoin.addTransactions(new Transaction("Dhaka","Feni", 50))
+// byteCoin.addTransactions(new Transaction("Dhaka","CTG", 50))
+
+// byteCoin.minePendingTransactions("Anik-Address")
+// console.log(byteCoin.getBalanceByAddress("Anik-Address"))
 // console.log(byteCoin.getBalanceByAddress("Feni"))
 // console.log(byteCoin.getBalanceByAddress("Dhaka"))
 // console.log(byteCoin.getBalanceByAddress("CTG"))
 
-byteCoin.minePendingTransactions("Anik-Address")
-console.log(byteCoin.getBalanceByAddress("Anik-Address"))
+// byteCoin.minePendingTransactions("Anik-Address")
+// console.log(byteCoin.getBalanceByAddress("Anik-Address"))
 
 // console.log(byteCoin)
 
